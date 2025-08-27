@@ -30,7 +30,7 @@ from logmanager import logger
 logger.info('Application starting')
 GPIO.setwarnings(False)
 GPIO.setmode(GPIO.BCM)
-channellist = [23, 17, 13, 19, 18, 27, 9, 24, 22, 11, 21, 26, 20, 12]
+channellist = [23, 17, 22]
 GPIO.setup(channellist, GPIO.OUT)
 GPIO.output(channellist, 0)
 
@@ -48,64 +48,10 @@ valves = [
         'excluded': 1
     },
     {
-        'id': 3,
-        'gpio': channellist[2],
-        'description': '3He pipette output',
-        'excluded': 4
-    },
-    {
-        'id': 4,
-        'gpio': channellist[3],
-        'description': '3He pipette input',
-        'excluded': 3
-    },
-    {
-        'id': 5,
-        'gpio': channellist[4],
-        'description': 'port 1',
-        'excluded': 8
-    },
-    {
-        'id': 6,
-        'gpio': channellist[5],
-        'description': 'ion pump',
-        'excluded': 5
-    },
-    {
-        'id': 7,
-        'gpio': channellist[6],
-        'description': 'gas analyser',
-        'excluded': 5
-    },
-    {
-        'id': 8,
-        'gpio': channellist[7],
-        'description': 'gallery A',
-        'excluded': 5
-    },
-    {
         'id': 10,
-        'gpio': channellist[8],
-        'description': 'laser cell',
-        'excluded': 5
-    },
-    {
-        'id': 11,
-        'gpio': channellist[9],
-        'description': 'getter',
-        'excluded': 5
-    },
-    {
-        'id': 12,
-        'gpio': channellist[10],
-        'description': 'buffer tank',
-        'excluded': 5
-    },
-    {
-        'id': 13,
-        'gpio': channellist[11],
-        'description': 'turbo pump',
-        'excluded': 5
+        'gpio': channellist[3],
+        'description': 'diffusion cell',
+        'excluded': 2
     }
 ]
 
