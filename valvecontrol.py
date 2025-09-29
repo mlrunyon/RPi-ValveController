@@ -2,7 +2,7 @@
 Raspberry Pi Valve Control System
 
 This module provides a comprehensive interface for controlling and monitoring laboratory
-valves via Raspberry Pi GPIO pins. It implements safety interlocks to prevent conflicting
+valves via [Raspberry Pi I^2C output]. It implements safety interlocks to prevent conflicting
 valve states, handles system commands, and provides status monitoring capabilities.
 
 Features:
@@ -12,7 +12,7 @@ Features:
 - Status reporting for monitoring
 - Logging of all valve operations and errors
 
-The module initializes GPIO pins, defines valve configurations with their relationships,
+The module initializes [MOSFET channels via I^2C], defines valve configurations with their relationships,
 and provides functions for valve manipulation through a consistent interface.
 
 Dependencies:
@@ -23,34 +23,36 @@ Dependencies:
 
 from threading import Timer
 import os
-from RPi import GPIO
+from RPi import lib8mosind
 from logmanager import logger
 
 
 logger.info('Application starting')
-GPIO.setwarnings(False)
-GPIO.setmode(GPIO.BCM)
-channellist = [23, 17, 22]
-GPIO.setup(channellist, GPIO.OUT)
-GPIO.output(channellist, 0)
+STACK = 0
+channels = [1,2,3]
 
+# initialize channels to OFF
+for ch in channels:
+    lib8mosind.set(STACK, ch, 0)
+
+# assign channels to valves
 valves = [
     {
         'id': 1,
-        'gpio': channellist[0],
-        'description': '4He pipette input',
+        'channel': channels[0],
+        'description': 'Pipette input',
         'excluded': 2
     },
     {
         'id': 2,
-        'gpio': channellist[1],
-        'description': '4He pipette output',
+        'channel': channels[1],
+        'description': 'Pipette output',
         'excluded': 1
     },
     {
         'id': 10,
-        'gpio': channellist[3],
-        'description': 'diffusion cell',
+        'channel': channels[2],
+        'description': 'Turbo',
         'excluded': 2
     }
 ]
