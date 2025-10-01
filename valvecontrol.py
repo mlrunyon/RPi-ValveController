@@ -16,7 +16,7 @@ The module initializes [MOSFET channels via I^2C], defines valve configurations 
 and provides functions for valve manipulation through a consistent interface.
 
 Dependencies:
-- RPi.GPIO: For hardware control of GPIO pins
+- Sequent microsystems lib8mosind: For I2C control of hardware
 - threading.Timer: For delayed execution of commands
 - logmanager: For operational logging
 """
@@ -137,7 +137,7 @@ def valveclose(valveid):
     Closes the specified valve based on its ID.
 
     Identifies the valve with the given ID in the list of valves,
-    ensures that the valve's GPIO pin is set to a low state, and logs the
+    ensures that the MOSFET channel is set to a low state, and logs the
     operation. This action effectively closes the valve. The provided valve
     ID should match an existing valve's ID within the list.
 
@@ -186,15 +186,15 @@ def status(value):
 
 def valvestatus():
     """
-    Determines the status of valves based on their GPIO input.
+    Determines the status of valves based on their I2C-reported state.
 
-    This function iterates through a list of valves, checks each valve's GPIO
-    input status, and compiles a list of dictionaries containing the valve ID
+    This function iterates through a list of valves, checks each valve's state, 
+    and compiles a list of dictionaries containing the valve ID
     and its respective status.
 
     Returns:
         list[dict]: A list where each dictionary contains the ID of a valve and
-        its corresponding status, based on GPIO input.
+        its corresponding status, based on MOSFET channel status.
     """
     states = lib8mosind.get_all(STACK)  # bitmask of all channel states
     return [
