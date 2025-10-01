@@ -29,7 +29,7 @@ from logmanager import logger
 
 logger.info('Application starting')
 STACK = 0
-channels = [1,2,3]
+channels = [1,2,3] # "channels" referred to as mosfets in github repo
 
 # initialize channels to OFF
 for ch in channels:
@@ -109,27 +109,34 @@ def valveopen(valveid):
     """
     Opens a valve based on its unique identifier if no conflicting valve is open.
 
-    Attempts to open the valve identified by the provided valve ID. Before opening,
-    it checks whether the valve marked as excluded for the specified valve is already open.
+    Before opening, it checks whether the valve marked as excluded for the specified valve is already open.
     If the excluded valve is open, the operation is aborted, logging a warning.
     If no conflict is found, the specified valve is opened, and this action is logged.
 
     Parameters:
         valveid (int): The unique identifier of the valve to be opened.
     """
-    valve = [valve for valve in valves if valve['id'] == valveid]
-    if GPIO.input([valvex for valvex in valves if valvex['id'] == valve[0]['excluded']][0]['gpio']) == 1:
-        logger.warning('cannot open valve as the excluded one is also open valve %s', valveid)
+    valve = [valve for valve in valves if valve['id'] == valveid][0]
+    excluded = [valvex for valvex in valves if valvex['id'] == valve['excluded']][0]
+
+    # Read all channel states (bitmask: 1 = ON, 0 = OFF)
+    status = lib8mosind.get_all(STACK)
+    excluded_state = (status >> (excluded['channel'] - 1)) & 1  # bit-shift to check channel
+
+    if excluded_state == 1:
+        logger.warning('Cannot open valve %s: excluded valve %s is already open', valveid, excluded['id'])
+
+    # If excluded channel is not on, valve will open
     else:
-        GPIO.output(valve[0]['gpio'], 1)
-        logger.info('Valve %s opened', valveid)
+        lib8mosind.set(STACK, valve['channel'], 1)
+        logger.info('Valve %s (%s) opened', valveid, valve['description'])
 
 
 def valveclose(valveid):
     """
     Closes the specified valve based on its ID.
 
-    The function identifies the valve with the given ID in the list of valves,
+    Identifies the valve with the given ID in the list of valves,
     ensures that the valve's GPIO pin is set to a low state, and logs the
     operation. This action effectively closes the valve. The provided valve
     ID should match an existing valve's ID within the list.
@@ -137,9 +144,9 @@ def valveclose(valveid):
     Parameters:
         valveid (int): The ID of the valve to be closed.
     """
-    valve = [valve for valve in valves if valve['id'] == valveid]
-    GPIO.output(valve[0]['gpio'], 0)
-    logger.info('Valve %s closed', valveid)
+    valve = [valve for valve in valves if valve['id'] == valveid][0]
+    lib8mosind.set(STACK, valve['channel'], 0)
+    logger.info('Valve %s (%s) closed', valveid, valve['description'])
 
 
 def allclose():
@@ -147,25 +154,21 @@ def allclose():
     Close all valves by setting the output of the specified channels to 0.
 
     Summary:
-    This function outputs a signal of 0 to all channels specified in the
-    'channellist', effectively closing all valves. It also logs an info
+    This function outputs a signal of 0 to all channels specified in
+    'channels' list, effectively closing all valves. It also logs an info
     message indicating the operation.
-
-    Parameters:
-    channellist : list
-        A list of GPIO channel numbers on which the output will be set to 0.
 
     Returns:
     None
     """
-    GPIO.output(channellist, 0)
+    lib8mosind.set(STACK, channels, 0)
     logger.info('All Valves Closed')
 
 def status(value):
     """
     Determines the status based on a given value.
-
-    This function evaluates the provided integer value and returns a corresponding
+    
+    Function evaluates the provided integer value and returns a corresponding
     status string. Specifically, it checks whether the value equals zero to
     determine if the status is 'closed'. Any other value results in a status
     of 'open'.
@@ -177,9 +180,7 @@ def status(value):
     str: A string representing the status. Returns 'closed' if the value is
     0; otherwise, returns 'open'.
     """
-    if value == 0:
-        return 'closed'
-    return 'open'
+    return 'closed' if value == 0 else 'open'
 
 
 
@@ -195,19 +196,19 @@ def valvestatus():
         list[dict]: A list where each dictionary contains the ID of a valve and
         its corresponding status, based on GPIO input.
     """
-    statuslist = []
-    for valve in valves:
-        if valve['id'] > 0:
-            statuslist.append({'valve': valve['id'], 'status': status(GPIO.input(valve['gpio']))})
-    return statuslist
+    states = lib8mosind.get_all(STACK)  # bitmask of all channel states
+    return [
+        {'valve': valve['id'], 'status': status((states >> (valve['channel'] - 1)) & 1)}
+        for valve in valves if valve['id'] > 0
+
 
 
 def httpstatus():
-    """
-    Determine and return the status of a list of valves based on their GPIO input.
+   """
+    Determine and return the status of a list of valves based on their I2C-reported state.
 
-    This function iterates through a list of valve objects, checks each valve's GPIO
-    input to determine its status and then constructs a list of dictionaries containing
+    This function iterates through a list of valve objects, checks each valve's state
+    (1 open or 0 closed) then constructs a list of dictionaries containing
     the valve's ID, description, and current status.
 
     Returns:
@@ -215,12 +216,15 @@ def httpstatus():
         `description` (str), and its current `status` (bool or other relevant type
         returned by the `status` function).
     """
-    statuslist = []
-    for valve in valves:
-        if valve['id'] > 0:
-            statuslist.append({'id': valve['id'], 'description': valve['description'],
-                               'status': status(GPIO.input(valve['gpio']))})
-    return statuslist
+    states = lib8mosind.get_all(STACK)  # bitmask of all channel states
+    return [
+        {
+            'id': valve['id'],
+            'description': valve['description'],
+            'status': status((states >> (valve['channel'] - 1)) & 1)
+        }
+        for valve in valves if valve['id'] > 0
+
 
 
 def reboot():
@@ -240,5 +244,18 @@ def reboot():
     os.system('sudo reboot')
 
 
-GPIO.output(12, 1)   # set ready
-logger.info('Application ready')
+ready_channel = 4  # spare MOSFET channel
+def turn_on():
+    lib8mosind.set(STACK, ready_channel, 1)
+def turn_off():
+    lib8mosind.set(STACK, ready_channel, 0)
+"""
+Indicates the application is ready via 3 blinks on MOSFET channel 4
+"""
+for i in range(3):
+    Timer(i * 2, turn_on).start()   # turn ON at 0s, 2s, 4s
+    Timer(i * 2 + 1, turn_off).start()  # turn OFF at 1s, 3s, 5s
+
+
+
+logger.info("Application ready (I2C)")
