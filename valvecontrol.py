@@ -200,7 +200,7 @@ def valvestatus():
     return [
         {'valve': valve['id'], 'status': status((states >> (valve['channel'] - 1)) & 1)}
         for valve in valves if valve['id'] > 0
-
+    ]
 
 
 def httpstatus():
@@ -224,7 +224,7 @@ def httpstatus():
             'status': status((states >> (valve['channel'] - 1)) & 1)
         }
         for valve in valves if valve['id'] > 0
-
+    ]
 
 
 def reboot():
