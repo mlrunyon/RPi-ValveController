@@ -55,7 +55,7 @@ valves = [
         'description': 'Turbo',
         'excluded': 2
     }
-
+]
 
 def parsecontrol(item, command):
     """
