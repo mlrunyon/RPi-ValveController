@@ -23,7 +23,7 @@ Dependencies:
 
 from threading import Timer
 import os
-from RPi import lib8mosind
+import lib8mosind
 from logmanager import logger
 
 
@@ -221,7 +221,7 @@ def httpstatus():
             'id': valve['id'],
             'description': valve['description'],
             'status': status((states >> (valve['channel'] - 1)) & 1)
-        }
+         }
         for valve in valves if valve['id'] > 0
     ]
 
