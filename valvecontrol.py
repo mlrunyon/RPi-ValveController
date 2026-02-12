@@ -215,8 +215,8 @@ def httpstatus():
         `description` (str), and its current `status` (bool or other relevant type
         returned by the `status` function).
     """
-    states = lib8mosind.get_all(STACK)  # bitmask of all channel states
-    return [
+   states = lib8mosind.get_all(STACK) #bitmask of all channel states
+   return [
         {
             'id': valve['id'],
             'description': valve['description'],
